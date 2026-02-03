@@ -1,0 +1,23 @@
+{
+  "name": "peekaleet",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ajdeevs/peekaleet.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ajdeevs/peekaleet/issues"
+  },
+  "homepage": "https://github.com/ajdeevs/peekaleet#readme",
+  "dependencies": {
+    "axios": "^1.13.4"
+  }
+}
