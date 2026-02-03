@@ -7,7 +7,6 @@ class PeekALeet {
     this.profile = null;
     this.totalCount = null;
     this.topicwise = null;
-    this.chart = null;
     this.recent = null;
     this.streak = null;
     this.contest = null;
@@ -15,66 +14,16 @@ class PeekALeet {
     this.endpoint = "https://leetcode.com/graphql/";
   }
 
-  async request(query, variables) {
-    const res = await axios.post(
-      this.endpoint,
-      { query, variables },
-      { headers: { "Content-Type": "application/json" } }
-    );
-
-    return res.data.data;
-  }
-
   async load(options = {}) {
-    this.profile = await this.getProfile();
-
-    if (options.totalCount) {
-      this.totalCount = await this.getTotalCount();
-    }
-
-    if (options.topicwise) {
-      this.topicwise = await this.getTopicWise();
-    }
-
-    if (options.recent) {
-      this.recent = await this.getRecent();
-    }
-
-    if (options.contest) {
-      this.contest = await this.getContest();
-    }
-
-    if (options.streak) {
-      this.streak = await this.getStreak();
-    }
-  }
-
-  async getStreak() {
     const query = `
-      query($username: String!) {
-        matchedUser(username: $username) {
-          userCalendar {
-            streak
-          }
-        }
-      }
-    `;
+      query fullUserData($username: String!, $limit: Int!) {
 
-    const data = await this.request(query, {
-      username: this.username
-    });
-
-    return data.matchedUser?.userCalendar?.streak || 0;
-  }
-
-  async getProfile() {
-    const query = `
-      query($username: String!) {
         matchedUser(username: $username) {
           username
           githubUrl
           twitterUrl
           linkedinUrl
+
           profile {
             ranking
             userAvatar
@@ -86,20 +35,29 @@ class PeekALeet {
             jobTitle
             reputation
           }
+
+          userCalendar {
+            streak
+          }
+
+          tagProblemCounts {
+            advanced { tagName problemsSolved }
+            intermediate { tagName problemsSolved }
+            fundamental { tagName problemsSolved }
+          }
+
+          languageProblemCount {
+            problemsSolved
+          }
         }
-      }
-    `;
 
-    const data = await this.request(query, {
-      username: this.username
-    });
+        recentAcSubmissionList(username: $username, limit: $limit) {
+          id
+          title
+          titleSlug
+          timestamp
+        }
 
-    return data.matchedUser;
-  }
-
-  async getContest() {
-    const query = `
-      query($username: String!) {
         userContestRankingHistory(username: $username) {
           ranking
           rating
@@ -111,76 +69,56 @@ class PeekALeet {
       }
     `;
 
-    const data = await this.request(query, {
-      username: this.username
-    });
-
-    return data.userContestRankingHistory.map(item => ({
-      title: item.contest.title,
-      ranking: item.ranking,
-      rating: item.rating
-    }));
-  }
-
-  async getRecent(limit = 15) {
-    const query = `
-      query($username: String!, $limit: Int!) {
-        recentAcSubmissionList(username: $username, limit: $limit) {
-          id
-          title
-          titleSlug
-          timestamp
+    const res = await axios.post(
+      this.endpoint,
+      {
+        query,
+        variables: {
+          username: this.username,
+          limit: 15
         }
+      },
+      {
+        headers: { "Content-Type": "application/json" }
       }
-    `;
-
-    const data = await this.request(query, {
-      username: this.username,
-      limit
-    });
-
-    return data.recentAcSubmissionList;
-  }
-
-  async getTopicWise() {
-    const query = `
-      query($username: String!) {
-        matchedUser(username: $username) {
-          tagProblemCounts {
-            advanced { tagName problemsSolved }
-            intermediate { tagName problemsSolved }
-            fundamental { tagName problemsSolved }
-          }
-        }
-      }
-    `;
-
-    const data = await this.request(query, {
-      username: this.username
-    });
-
-    return data.matchedUser.tagProblemCounts;
-  }
-
-  async getTotalCount() {
-    const query = `
-      query($username: String!) {
-        matchedUser(username: $username) {
-          languageProblemCount {
-            problemsSolved
-          }
-        }
-      }
-    `;
-
-    const data = await this.request(query, {
-      username: this.username
-    });
-
-    return data.matchedUser.languageProblemCount.reduce(
-      (sum, lang) => sum + lang.problemsSolved,
-      0
     );
+
+    const data = res.data.data;
+
+    if (!data || !data.matchedUser) {
+      throw new Error("User not found");
+    }
+
+    const user = data.matchedUser;
+
+    this.profile = user;
+
+    if (options.streak) {
+      this.streak = user.userCalendar?.streak || 0;
+    }
+
+    if (options.topicwise) {
+      this.topicwise = user.tagProblemCounts;
+    }
+
+    if (options.totalCount) {
+      this.totalCount = user.languageProblemCount.reduce(
+        (sum, lang) => sum + lang.problemsSolved,
+        0
+      );
+    }
+
+    if (options.recent) {
+      this.recent = data.recentAcSubmissionList;
+    }
+
+    if (options.contest) {
+      this.contest = data.userContestRankingHistory.map(item => ({
+        title: item.contest.title,
+        ranking: item.ranking,
+        rating: item.rating
+      }));
+    }
   }
 }
 
